@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nearby Explorer - Discover Places Around You</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .controls {
+            background: rgba(255,255,255,0.95);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .location-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .location-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 500;
+        }
+
+        .status-icon {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ff4444;
+            animation: pulse 2s infinite;
+        }
+
+        .status-icon.active {
+            background: #44ff44;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .controls-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .radius-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .radius-control label {
+            font-weight: 500;
+        }
+
+        .radius-control select {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            font-size: 14px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+        }
+
+        .spinner {
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .places-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .place-card {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .place-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+
+        .place-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .place-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .place-info h3 {
+            font-size: 1.2rem;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .place-type {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .place-details {
+            margin-top: 15px;
+        }
+
+        .detail-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .detail-icon {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        .place-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: 6px;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+
+        .btn-directions {
+            background: #4285f4;
+            color: white;
+        }
+
+        .btn-directions:hover {
+            background: #3367d6;
+        }
+
+        .error-message {
+            background: rgba(255,255,255,0.95);
+            border: 2px solid #ff4444;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            color: #cc0000;
+            margin-top: 20px;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: white;
+        }
+
+        .no-results h3 {
+            margin-bottom: 10px;
+        }
+
+        /* Category-specific colors */
+        .tourist_attraction { background: linear-gradient(45deg, #ff6b6b, #ffa726); }
+        .shopping_mall { background: linear-gradient(45deg, #4ecdc4, #44a08d); }
+        .place_of_worship { background: linear-gradient(45deg, #a8edea, #fed6e3); }
+        .natural_feature { background: linear-gradient(45deg, #d299c2, #fef9d7); }
+        .amusement_park { background: linear-gradient(45deg, #89f7fe, #66a6ff); }
+        .museum { background: linear-gradient(45deg, #f093fb, #f5576c); }
+        .park { background: linear-gradient(45deg, #4facfe, #00f2fe); }
+
+        .tourist_attraction .place-type { background: #fff3e0; color: #e65100; }
+        .shopping_mall .place-type { background: #e0f2f1; color: #00695c; }
+        .place_of_worship .place-type { background: #f3e5f5; color: #4a148c; }
+        .natural_feature .place-type { background: #e8f5e8; color: #2e7d32; }
+        .amusement_park .place-type { background: #e3f2fd; color: #0277bd; }
+        .museum .place-type { background: #fce4ec; color: #c2185b; }
+        .park .place-type { background: #e0f7fa; color: #00838f; }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .controls-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .location-info {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗺️ Nearby Explorer</h1>
+            <p>Discover amazing places around your current location</p>
+        </div>
+
+        <div class="controls">
+            <div class="location-info">
+                <div class="location-status">
+                    <div class="status-icon" id="statusIcon"></div>
+                    <span id="locationStatus">Location not detected</span>
+                </div>
+                <div id="coordinates"></div>
+            </div>
+            
+            <div class="controls-row">
+                <div class="radius-control">
+                    <label for="radiusSelect">Search Radius:</label>
+                    <select id="radiusSelect">
+                        <option value="5000">5 km</option>
+                        <option value="10000" selected>10 km</option>
+                        <option value="15000">15 km</option>
+                        <option value="20000">20 km</option>
+                    </select>
+                </div>
+                
+                <button class="btn btn-primary" id="refreshLocation">
+                    🔄 Refresh Location
+                </button>
+                
+                <button class="btn btn-primary" id="findPlaces" disabled>
+                    🔍 Find Places
+                </button>
+            </div>
+        </div>
+
+        <div id="loadingIndicator" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Finding amazing places near you...</p>
+        </div>
+
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+
+        <div id="placesContainer" class="places-grid"></div>
+    </div>
+
+    <script>
+        class NearbyExplorer {
+            constructor() {
+                this.currentLocation = null;
+                this.places = [];
+                this.init();
+            }
+
+            init() {
+                this.bindEvents();
+                this.requestLocation();
+            }
+
+            bindEvents() {
+                document.getElementById('refreshLocation').addEventListener('click', () => {
+                    this.requestLocation();
+                });
+
+                document.getElementById('findPlaces').addEventListener('click', () => {
+                    this.findNearbyPlaces();
+                });
+
+                document.getElementById('radiusSelect').addEventListener('change', () => {
+                    if (this.currentLocation) {
+                        this.findNearbyPlaces();
+                    }
+                });
+            }
+
+            requestLocation() {
+                this.updateLocationStatus('Requesting location...', false);
+                
+                if (!navigator.geolocation) {
+                    this.showError('Geolocation is not supported by this browser.');
+                    return;
+                }
+
+                navigator.geolocation.getCurrentPosition(
+                    (position) => this.onLocationSuccess(position),
+                    (error) => this.onLocationError(error),
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 300000 // 5 minutes
+                    }
+                );
+            }
+
+            onLocationSuccess(position) {
+                this.currentLocation = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                };
+
+                this.updateLocationStatus(
+                    `Location detected (±${Math.round(position.coords.accuracy)} meters)`, 
+                    true
+                );
+                
+                document.getElementById('coordinates').innerHTML = 
+                    `📍 ${this.currentLocation.lat.toFixed(6)}, ${this.currentLocation.lng.toFixed(6)}`;
+                
+                document.getElementById('findPlaces').disabled = false;
+                this.findNearbyPlaces();
+            }
+
+            onLocationError(error) {
+                let message = 'Unable to retrieve location. ';
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        message += 'Please allow location access and refresh the page.';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        message += 'Location information is unavailable.';
+                        break;
+                    case error.TIMEOUT:
+                        message += 'Location request timed out.';
+                        break;
+                    default:
+                        message += 'An unknown error occurred.';
+                        break;
+                }
+                this.showError(message);
+                this.updateLocationStatus('Location access denied or failed', false);
+            }
+
+            updateLocationStatus(message, active) {
+                document.getElementById('locationStatus').textContent = message;
+                const icon = document.getElementById('statusIcon');
+                if (active) {
+                    icon.classList.add('active');
+                } else {
+                    icon.classList.remove('active');
+                }
+            }
+
+            async findNearbyPlaces() {
+                if (!this.currentLocation) {
+                    this.showError('Location not available. Please allow location access.');
+                    return;
+                }
+
+                this.showLoading(true);
+                this.hideError();
+                
+                const radius = document.getElementById('radiusSelect').value;
+                
+                // Since we can't use real APIs in this demo, we'll simulate with mock data
+                setTimeout(() => {
+                    this.displayMockPlaces(radius);
+                    this.showLoading(false);
+                }, 2000);
+            }
+
+            displayMockPlaces(radius) {
+                // Mock data for demonstration
+                const mockPlaces = [
+                    {
+                        name: "Lalbagh Botanical Gardens",
+                        type: "park",
+                        category: "Tourist Attraction",
+                        distance: 2.3,
+                        rating: 4.5,
+                        address: "Lalbagh Road, Bengaluru",
+                        icon: "🌳"
+                    },
+                    {
+                        name: "Bangalore Palace",
+                        type: "tourist_attraction",
+                        category: "Historical Site",
+                        distance: 3.1,
+                        rating: 4.3,
+                        address: "Palace Road, Bengaluru",
+                        icon: "🏰"
+                    },
+                    {
+                        name: "Forum Mall",
+                        type: "shopping_mall",
+                        category: "Shopping Mall",
+                        distance: 1.8,
+                        rating: 4.2,
+                        address: "Hosur Road, Bengaluru",
+                        icon: "🛍️"
+                    },
+                    {
+                        name: "ISKCON Temple",
+                        type: "place_of_worship",
+                        category: "Temple",
+                        distance: 4.2,
+                        rating: 4.6,
+                        address: "Hare Krishna Hill, Bengaluru",
+                        icon: "🕉️"
+                    },
+                    {
+                        name: "Nandi Hills",
+                        type: "natural_feature",
+                        category: "Trekking Spot",
+                        distance: 8.7,
+                        rating: 4.4,
+                        address: "Nandi Hills, Karnataka",
+                        icon: "⛰️"
+                    },
+                    {
+                        name: "Visvesvaraya Museum",
+                        type: "museum",
+                        category: "Science Museum",
+                        distance: 3.5,
+                        rating: 4.1,
+                        address: "Kasturba Road, Bengaluru",
+                        icon: "🔬"
+                    },
+                    {
+                        name: "Wonderla Amusement Park",
+                        type: "amusement_park",
+                        category: "Amusement Park",
+                        distance: 12.3,
+                        rating: 4.3,
+                        address: "Bidadi, Bengaluru",
+                        icon: "🎢"
+                    },
+                    {
+                        name: "Bull Temple",
+                        type: "place_of_worship",
+                        category: "Temple",
+                        distance: 2.8,
+                        rating: 4.2,
+                        address: "Basavanagudi, Bengaluru",
+                        icon: "🐂"
+                    }
+                ];
+
+                const radiusKm = parseInt(radius) / 1000;
+                const filteredPlaces = mockPlaces.filter(place => place.distance <= radiusKm);
+                
+                this.displayPlaces(filteredPlaces);
+            }
+
+            displayPlaces(places) {
+                const container = document.getElementById('placesContainer');
+                
+                if (places.length === 0) {
+                    container.innerHTML = `
+                        <div class="no-results">
+                            <h3>No places found</h3>
+                            <p>Try increasing the search radius or check your location.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = places.map(place => `
+                    <div class="place-card ${place.type}">
+                        <div class="place-header">
+                            <div class="place-icon">
+                                ${place.icon}
+                            </div>
+                            <div class="place-info">
+                                <h3>${place.name}</h3>
+                                <span class="place-type">${place.category}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="place-details">
+                            <div class="detail-row">
+                                <span class="detail-icon">📍</span>
+                                <span>${place.distance} km away</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-icon">⭐</span>
+                                <span>${place.rating}/5 rating</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-icon">📍</span>
+                                <span>${place.address}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="place-actions">
+                            <a href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(place.name + ' ' + place.address)}" 
+                               target="_blank" class="btn-small btn-directions">
+                                🧭 Directions
+                            </a>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            showLoading(show) {
+                document.getElementById('loadingIndicator').style.display = show ? 'block' : 'none';
+            }
+
+            showError(message) {
+                const errorDiv = document.getElementById('errorMessage');
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+            }
+
+            hideError() {
+                document.getElementById('errorMessage').style.display = 'none';
+            }
+        }
+
+        // Initialize the app when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new NearbyExplorer();
+        });
+    </script>
+</body>
+</html>
